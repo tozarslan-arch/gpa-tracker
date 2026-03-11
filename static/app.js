@@ -108,19 +108,6 @@ async function detectLanguage() {
     if (browserLang.startsWith("tr")) return "tr";
     if (browserLang.startsWith("es")) return "es";
 
-    try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        const country = data.country;
-
-        const spanishCountries = [
-            "ES","MX","AR","CO","CL","PE","VE","UY","PY","BO",
-            "DO","CR","PA","GT","SV","HN","NI"
-        ];
-        if (country === "TR") return "tr";
-        if (spanishCountries.includes(country)) return "es";
-    } catch (e) {}
-
     return "en";
 }
 
@@ -128,16 +115,7 @@ async function detectLanguage() {
 // SAMPLE DATA
 // -------------------------------
 const sampleData = {
-    semesters: [
-        {
-            id: "fall2024",
-            name: "Fall 2024",
-            courses: [
-                { id: "c1", name: "Math 101", credits: 3, grade: "A" },
-                { id: "c2", name: "History 201", credits: 3, grade: "B+" }
-            ]
-        }
-    ]
+    semesters: []
 };
 
 // -------------------------------
@@ -208,29 +186,8 @@ function cumulativeGPA() {
 // -------------------------------
 // SEMESTER SORTING
 // -------------------------------
-const seasonOrder = {
-    "Winter": 1, "Spring": 2, "Summer": 3, "Fall": 4,
-    "Kış": 1, "İlkbahar": 2, "Yaz": 3, "Güz": 4,
-    "Invierno": 1, "Primavera": 2, "Verano": 3, "Otoño": 4
-};
-
-function parseSemesterName(name) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length < 2) return { season: "", year: 0 };
-    return { season: parts[0], year: parseInt(parts[1], 10) || 0 };
-}
-
 function sortSemesters() {
-    gpaData.semesters.sort((a, b) => {
-        const pa = parseSemesterName(a.name);
-        const pb = parseSemesterName(b.name);
-
-        if (pa.year !== pb.year) return pa.year - pb.year;
-
-        const sa = seasonOrder[pa.season] || 0;
-        const sb = seasonOrder[pb.season] || 0;
-        return sa - sb;
-    });
+    gpaData.semesters.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // -------------------------------
@@ -244,7 +201,6 @@ let chart;
 // -------------------------------
 function renderSemesters() {
     const container = document.getElementById("semesterList");
-    if (!container) return;
     container.innerHTML = "";
 
     gpaData.semesters.forEach((sem, index) => {
@@ -264,8 +220,6 @@ function renderSemesters() {
                     <button onclick="deleteSemester('${sem.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">${t("delete")}</button>
                 </div>
                 <div class="flex gap-1">
-                    <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">↑</button>
-                    <button onclick="moveSemester(${index}, 1)" class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">↓</button>
                     <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded text-xs md:text-sm">${t("addCourse")}</button>
                 </div>
             </div>
@@ -293,7 +247,7 @@ function renderSemesters() {
 }
 
 // -------------------------------
-// SEMESTER INLINE EDIT / ADD / DELETE / MOVE
+// SEMESTER FUNCTIONS
 // -------------------------------
 function addSemester() {
     const name = prompt(t("promptSemester"));
@@ -311,26 +265,18 @@ function addSemester() {
 
 function startEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
-    if (!span) return;
     span.contentEditable = "true";
     span.focus();
-    const range = document.createRange();
-    range.selectNodeContents(span);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
 }
 
 function finishEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
-    if (!span || span.contentEditable !== "true") return;
-
     span.contentEditable = "false";
+
     const newName = span.textContent.trim();
     if (!newName) return;
 
     const sem = gpaData.semesters.find(s => s.id === semId);
-    if (!sem) return;
     sem.name = newName;
 
     sortSemesters();
@@ -343,24 +289,174 @@ function deleteSemester(semId) {
     renderSemesters();
 }
 
-function moveSemester(index, dir) {
-    const newIndex = index + dir;
-    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
-
-    const temp = gpaData.semesters[index];
-    gpaData.semesters[index] = gpaData.semesters[newIndex];
-    gpaData.semesters[newIndex] = temp;
-
-    renderSemesters();
-}
-
 // -------------------------------
 // COURSE FUNCTIONS
 // -------------------------------
 function addCourse(semId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
-    if (!sem) return;
 
     const name = prompt(t("promptCourseName"));
     if (!name) return;
 
+    const credits = parseInt(prompt(t("promptCredits")), 10);
+    if (isNaN(credits) || credits <= 0) return;
+
+    const grade = prompt(t("promptGrade"));
+    if (!grade) return;
+
+    sem.courses.push({
+        id: "c" + Date.now(),
+        name: name.trim(),
+        credits,
+        grade: grade.toUpperCase()
+    });
+
+    renderSemesters();
+}
+
+function editCourse(semId, courseId) {
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    const course = sem.courses.find(c => c.id === courseId);
+
+    const name = prompt(t("promptCourseName"), course.name);
+    if (!name) return;
+
+    const credits = parseInt(prompt(t("promptCredits"), course.credits), 10);
+    if (isNaN(credits) || credits <= 0) return;
+
+    const grade = prompt(t("promptGrade"), course.grade);
+    if (!grade) return;
+
+    course.name = name.trim();
+    course.credits = credits;
+    course.grade = grade.toUpperCase();
+
+    renderSemesters();
+}
+
+function deleteCourse(semId, courseId) {
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    sem.courses = sem.courses.filter(c => c.id !== courseId);
+    renderSemesters();
+}
+
+// -------------------------------
+// GPA CHART
+// -------------------------------
+function updateChart() {
+    const canvas = document.getElementById("gpaChart");
+    const ctx = canvas.getContext("2d");
+
+    const labels = gpaData.semesters.map(s => s.name);
+    const semGPA = gpaData.semesters.map(s => semesterGPA(s));
+    const cum = cumulativeGPA();
+    const cumGPA = semGPA.map(() => cum);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: t("semesterGPA"),
+                    data: semGPA,
+                    borderColor: "blue",
+                    fill: false,
+                    tension: 0.2
+                },
+                {
+                    label: t("cumulativeGPA"),
+                    data: cumGPA,
+                    borderColor: "green",
+                    fill: false,
+                    tension: 0.2
+                },
+                {
+                    label: t("targetGPA"),
+                    data: semGPA.map(() => 3.0),
+                    borderColor: "red",
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 4.3
+                }
+            }
+        }
+    });
+}
+
+// -------------------------------
+// TRANSCRIPT PDF
+// -------------------------------
+function downloadTranscriptPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y = 15;
+
+    doc.setFontSize(18);
+    doc.text("Academic Transcript", 14, y);
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, y);
+    y += 10;
+
+    gpaData.semesters.forEach((sem) => {
+        doc.setFontSize(14);
+        doc.text(sem.name, 14, y);
+        y += 8;
+
+        doc.setFontSize(11);
+
+        sem.courses.forEach((c) => {
+            doc.text(
+                `${c.name} — ${c.credits} credits — Grade: ${c.grade}`,
+                20,
+                y
+            );
+            y += 6;
+
+            if (y > 270) {
+                doc.addPage();
+                y = 15;
+            }
+        });
+
+        const sgpa = semesterGPA(sem).toFixed(2);
+        doc.text(`Semester GPA: ${sgpa}`, 20, y);
+        y += 10;
+
+        if (y > 270) {
+            doc.addPage();
+            y = 15;
+        }
+    });
+
+    const cgpa = cumulativeGPA().toFixed(2);
+    doc.setFontSize(14);
+    doc.text(`Cumulative GPA: ${cgpa}`, 14, y);
+
+    doc.save("transcript.pdf");
+}
+
+// -------------------------------
+// INIT
+// -------------------------------
+(async function init() {
+    currentLanguage = await detectLanguage();
+    applyTranslations();
+    sortSemesters();
+    renderSemesters();
+})();
