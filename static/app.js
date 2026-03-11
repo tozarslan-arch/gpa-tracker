@@ -119,9 +119,7 @@ async function detectLanguage() {
         ];
         if (country === "TR") return "tr";
         if (spanishCountries.includes(country)) return "es";
-    } catch (e) {
-        // ignore errors
-    }
+    } catch (e) {}
 
     return "en";
 }
@@ -208,31 +206,18 @@ function cumulativeGPA() {
 }
 
 // -------------------------------
-// SEMESTER SORTING (SEASON + YEAR)
+// SEMESTER SORTING
 // -------------------------------
 const seasonOrder = {
-    "Winter": 1,
-    "Spring": 2,
-    "Summer": 3,
-    "Fall": 4,
-    "Kış": 1,
-    "İlkbahar": 2,
-    "Yaz": 3,
-    "Güz": 4,
-    "Invierno": 1,
-    "Primavera": 2,
-    "Verano": 3,
-    "Otoño": 4
+    "Winter": 1, "Spring": 2, "Summer": 3, "Fall": 4,
+    "Kış": 1, "İlkbahar": 2, "Yaz": 3, "Güz": 4,
+    "Invierno": 1, "Primavera": 2, "Verano": 3, "Otoño": 4
 };
 
 function parseSemesterName(name) {
     const parts = name.trim().split(/\s+/);
-    if (parts.length < 2) {
-        return { season: "", year: 0 };
-    }
-    const season = parts[0];
-    const year = parseInt(parts[1], 10) || 0;
-    return { season, year };
+    if (parts.length < 2) return { season: "", year: 0 };
+    return { season: parts[0], year: parseInt(parts[1], 10) || 0 };
 }
 
 function sortSemesters() {
@@ -240,9 +225,7 @@ function sortSemesters() {
         const pa = parseSemesterName(a.name);
         const pb = parseSemesterName(b.name);
 
-        if (pa.year !== pb.year) {
-            return pa.year - pb.year;
-        }
+        if (pa.year !== pb.year) return pa.year - pb.year;
 
         const sa = seasonOrder[pa.season] || 0;
         const sb = seasonOrder[pb.season] || 0;
@@ -277,14 +260,8 @@ function renderSemesters() {
                         contenteditable="false"
                         onblur="finishEditSemester('${sem.id}')"
                     >${sem.name}</span>
-                    <button
-                        onclick="startEditSemester('${sem.id}')"
-                        class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm"
-                    >${t("edit")}</button>
-                    <button
-                        onclick="deleteSemester('${sem.id}')"
-                        class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm"
-                    >${t("delete")}</button>
+                    <button onclick="startEditSemester('${sem.id}')" class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">${t("edit")}</button>
+                    <button onclick="deleteSemester('${sem.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">${t("delete")}</button>
                 </div>
                 <div class="flex gap-1">
                     <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">↑</button>
@@ -378,7 +355,7 @@ function moveSemester(index, dir) {
 }
 
 // -------------------------------
-// COURSE FUNCTIONS (PROMPT-BASED)
+// COURSE FUNCTIONS
 // -------------------------------
 function addCourse(semId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
@@ -387,116 +364,3 @@ function addCourse(semId) {
     const name = prompt(t("promptCourseName"));
     if (!name) return;
 
-    const creditsRaw = prompt(t("promptCredits"));
-    const credits = parseInt(creditsRaw, 10);
-    if (isNaN(credits) || credits <= 0) return;
-
-    const grade = prompt(t("promptGrade"));
-    if (!grade) return;
-
-    sem.courses.push({
-        id: "c" + Date.now(),
-        name: name.trim(),
-        credits,
-        grade: grade.toUpperCase()
-    });
-
-    renderSemesters();
-}
-
-function editCourse(semId, courseId) {
-    const sem = gpaData.semesters.find(s => s.id === semId);
-    if (!sem) return;
-    const course = sem.courses.find(c => c.id === courseId);
-    if (!course) return;
-
-    const name = prompt(t("promptCourseName"), course.name);
-    if (!name) return;
-
-    const creditsRaw = prompt(t("promptCredits"), course.credits);
-    const credits = parseInt(creditsRaw, 10);
-    if (isNaN(credits) || credits <= 0) return;
-
-    const grade = prompt(t("promptGrade"), course.grade);
-    if (!grade) return;
-
-    course.name = name.trim();
-    course.credits = credits;
-    course.grade = grade.toUpperCase();
-
-    renderSemesters();
-}
-
-function deleteCourse(semId, courseId) {
-    const sem = gpaData.semesters.find(s => s.id === semId);
-    if (!sem) return;
-    sem.courses = sem.courses.filter(c => c.id !== courseId);
-    renderSemesters();
-}
-
-// -------------------------------
-// GPA CHART (RESPONSIVE)
-// -------------------------------
-function updateChart() {
-    const canvas = document.getElementById("gpaChart");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    const labels = gpaData.semesters.map(s => s.name);
-    const semGPA = gpaData.semesters.map(s => semesterGPA(s));
-    const cum = cumulativeGPA();
-    const cumGPA = semGPA.map(() => cum);
-
-    if (chart) chart.destroy();
-
-    chart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: t("semesterGPA"),
-                    data: semGPA,
-                    borderColor: "blue",
-                    fill: false,
-                    tension: 0.2
-                },
-                {
-                    label: t("cumulativeGPA"),
-                    data: cumGPA,
-                    borderColor: "green",
-                    fill: false,
-                    tension: 0.2
-                },
-                {
-                    label: t("targetGPA"),
-                    data: semGPA.map(() => 3.0),
-                    borderColor: "red",
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    suggestedMin: 0,
-                    suggestedMax: 4.3
-                }
-            }
-        }
-    });
-}
-
-// -------------------------------
-// INIT
-// -------------------------------
-(async function init() {
-    currentLanguage = await detectLanguage();
-    applyTranslations();
-    sortSemesters();
-    renderSemesters();
-})();
