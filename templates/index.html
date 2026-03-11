@@ -10,26 +10,58 @@
 
 <body class="bg-gray-100">
 
-    <div class="flex">
-        <!-- Sidebar -->
-        <div class="w-64 bg-white shadow h-screen p-4">
+    <div class="min-h-screen flex flex-col md:flex-row">
+
+        <!-- Desktop sidebar -->
+        <aside class="hidden md:block w-64 bg-white shadow p-4">
             <h2 class="text-xl font-bold mb-4">GPA Tracker</h2>
 
-            <button onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded mb-2">Add Semester</button>
-            <button onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded mb-2">Reset All Data</button>
+            <button onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded mb-2">
+                Add Semester
+            </button>
+            <button onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded mb-2">
+                Reset All Data
+            </button>
 
-            <p class="text-sm text-gray-500 mt-4">Your data is stored locally in your browser.</p>
+            <p class="text-sm text-gray-500 mt-4">
+                Your data is stored locally in your browser.
+            </p>
+        </aside>
+
+        <!-- Mobile top bar -->
+        <header class="md:hidden bg-white shadow px-4 py-3 flex items-center justify-between">
+            <span class="font-bold text-lg">GPA Tracker</span>
+            <button onclick="toggleMobileMenu()" class="px-3 py-1 border rounded">
+                ☰
+            </button>
+        </header>
+
+        <!-- Mobile menu -->
+        <div id="mobileMenu" class="md:hidden bg-white shadow px-4 py-3 space-y-2 hidden">
+            <button onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded">
+                Add Semester
+            </button>
+            <button onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded">
+                Reset All Data
+            </button>
+            <p class="text-sm text-gray-500">
+                Your data is stored locally in your browser.
+            </p>
         </div>
 
-        <!-- Main Content -->
-        <div class="flex-1 p-6">
+        <!-- Main content -->
+        <main class="flex-1 p-4 md:p-6">
             <h1 class="text-3xl font-bold mb-4">Your Semesters</h1>
 
-            <div id="semesterList"></div>
+            <div id="semesterList" class="space-y-4"></div>
 
             <h2 class="text-2xl font-bold mt-8 mb-2">GPA Chart</h2>
-            <canvas id="gpaChart" height="80"></canvas>
-        </div>
+            <div class="bg-white rounded shadow p-4 max-w-3xl">
+                <div class="relative" style="height: 220px;">
+                    <canvas id="gpaChart"></canvas>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script src="/static/app.js"></script>

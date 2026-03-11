@@ -15,13 +15,13 @@ const sampleData = {
 };
 
 // -------------------------------
-// LOAD / SAVE / RESET
+// LOCALSTORAGE LOAD / SAVE / RESET
 // -------------------------------
 function loadData() {
     let data = localStorage.getItem("gpa_data");
     if (!data) {
         localStorage.setItem("gpa_data", JSON.stringify(sampleData));
-        return sampleData;
+        return JSON.parse(JSON.stringify(sampleData));
     }
     return JSON.parse(data);
 }
@@ -38,6 +38,14 @@ function resetAllData() {
 }
 
 let gpaData = loadData();
+
+// -------------------------------
+// MOBILE MENU
+// -------------------------------
+function toggleMobileMenu() {
+    const menu = document.getElementById("mobileMenu");
+    menu.classList.toggle("hidden");
+}
 
 // -------------------------------
 // GPA CALCULATION
@@ -74,6 +82,42 @@ function cumulativeGPA() {
 }
 
 // -------------------------------
+// SEMESTER SORTING (SEASON + YEAR)
+// -------------------------------
+const seasonOrder = {
+    "Winter": 1,
+    "Spring": 2,
+    "Summer": 3,
+    "Fall": 4
+};
+
+function parseSemesterName(name) {
+    // Expecting formats like "Fall 2024", "Spring 2023"
+    const parts = name.trim().split(/\s+/);
+    if (parts.length < 2) {
+        return { season: "", year: 0 };
+    }
+    const season = parts[0];
+    const year = parseInt(parts[1], 10) || 0;
+    return { season, year };
+}
+
+function sortSemesters() {
+    gpaData.semesters.sort((a, b) => {
+        const pa = parseSemesterName(a.name);
+        const pb = parseSemesterName(b.name);
+
+        if (pa.year !== pb.year) {
+            return pa.year - pb.year; // older first
+        }
+
+        const sa = seasonOrder[pa.season] || 0;
+        const sb = seasonOrder[pb.season] || 0;
+        return sa - sb;
+    });
+}
+
+// -------------------------------
 // RENDER SEMESTERS
 // -------------------------------
 function renderSemesters() {
@@ -82,42 +126,42 @@ function renderSemesters() {
 
     gpaData.semesters.forEach((sem, index) => {
         const div = document.createElement("div");
-        div.className = "bg-white p-4 rounded shadow mb-4";
+        div.className = "bg-white p-4 rounded shadow";
 
         div.innerHTML = `
-            <div class="flex justify-between items-center mb-2">
-                <div class="flex items-center space-x-2">
-                    <span 
-                        id="sem-name-${sem.id}" 
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-2">
+                <div class="flex items-center gap-2">
+                    <span
+                        id="sem-name-${sem.id}"
                         class="text-xl font-bold px-1 rounded hover:bg-gray-100 cursor-text"
                         contenteditable="false"
                         onblur="finishEditSemester('${sem.id}')"
                     >${sem.name}</span>
-                    <button 
-                        onclick="startEditSemester('${sem.id}')" 
-                        class="px-2 py-1 bg-yellow-400 rounded text-sm"
+                    <button
+                        onclick="startEditSemester('${sem.id}')"
+                        class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm"
                     >Edit</button>
-                    <button 
-                        onclick="deleteSemester('${sem.id}')" 
-                        class="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                    <button
+                        onclick="deleteSemester('${sem.id}')"
+                        class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm"
                     >Delete</button>
                 </div>
-                <div class="space-x-1">
-                    <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded">↑</button>
-                    <button onclick="moveSemester(${index}, 1)" class="px-2 py-1 bg-gray-300 rounded">↓</button>
-                    <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded">Add Course</button>
+                <div class="flex gap-1">
+                    <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">↑</button>
+                    <button onclick="moveSemester(${index}, 1)" class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">↓</button>
+                    <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded text-xs md:text-sm">Add Course</button>
                 </div>
             </div>
 
-            <div class="mt-3">
+            <div class="mt-2 space-y-2">
                 ${sem.courses.map(c => `
-                    <div class="p-2 border rounded mb-2 flex justify-between">
-                        <div>
+                    <div class="p-2 border rounded flex justify-between items-center">
+                        <div class="text-sm md:text-base">
                             <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
                         </div>
-                        <div class="space-x-1">
-                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded text-sm">Edit</button>
-                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-sm">X</button>
+                        <div class="flex gap-1">
+                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">Edit</button>
+                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">X</button>
                         </div>
                     </div>
                 `).join("")}
@@ -135,15 +179,16 @@ function renderSemesters() {
 // SEMESTER INLINE EDIT / ADD / DELETE / MOVE
 // -------------------------------
 function addSemester() {
-    const name = prompt("Semester name:");
+    const name = prompt("Semester name (e.g., 'Fall 2024'):");
     if (!name) return;
 
     gpaData.semesters.push({
         id: "sem" + Date.now(),
-        name,
+        name: name.trim(),
         courses: []
     });
 
+    sortSemesters();
     renderSemesters();
 }
 
@@ -160,14 +205,17 @@ function startEditSemester(semId) {
 
 function finishEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
+    if (span.contentEditable !== "true") return;
+
     span.contentEditable = "false";
     const newName = span.textContent.trim();
     if (!newName) return;
 
     const sem = gpaData.semesters.find(s => s.id === semId);
     sem.name = newName;
-    saveData();
-    updateChart();
+
+    sortSemesters();
+    renderSemesters();
 }
 
 function deleteSemester(semId) {
@@ -188,7 +236,7 @@ function moveSemester(index, dir) {
 }
 
 // -------------------------------
-// COURSE FUNCTIONS
+// COURSE FUNCTIONS (PROMPT-BASED)
 // -------------------------------
 function addCourse(semId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
@@ -204,7 +252,7 @@ function addCourse(semId) {
 
     sem.courses.push({
         id: "c" + Date.now(),
-        name,
+        name: name.trim(),
         credits,
         grade: grade.toUpperCase()
     });
@@ -226,7 +274,7 @@ function editCourse(semId, courseId) {
     const grade = prompt("Grade:", course.grade);
     if (!grade) return;
 
-    course.name = name;
+    course.name = name.trim();
     course.credits = credits;
     course.grade = grade.toUpperCase();
 
@@ -240,7 +288,7 @@ function deleteCourse(semId, courseId) {
 }
 
 // -------------------------------
-// GPA CHART
+// GPA CHART (RESPONSIVE)
 // -------------------------------
 let chart;
 
@@ -263,27 +311,41 @@ function updateChart() {
                     label: "Semester GPA",
                     data: semGPA,
                     borderColor: "blue",
-                    fill: false
+                    fill: false,
+                    tension: 0.2
                 },
                 {
                     label: "Cumulative GPA",
                     data: cumGPA,
                     borderColor: "green",
-                    fill: false
+                    fill: false,
+                    tension: 0.2
                 },
                 {
                     label: "Target 3.0",
                     data: semGPA.map(() => 3.0),
                     borderColor: "red",
                     borderDash: [5, 5],
-                    fill: false
+                    fill: false,
+                    tension: 0
                 }
             ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 4.3
+                }
+            }
         }
     });
 }
 
 // -------------------------------
-// INITIAL RENDER
+// INITIALIZE
 // -------------------------------
+sortSemesters();
 renderSemesters();
