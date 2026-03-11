@@ -290,6 +290,25 @@ function deleteSemester(semId) {
 }
 
 // -------------------------------
+// MOVE SEMESTER UP / DOWN
+// -------------------------------
+function moveSemester(index, direction) {
+    const newIndex = index + direction;
+
+    // Prevent moving out of bounds
+    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
+
+    // Swap semesters
+    const temp = gpaData.semesters[index];
+    gpaData.semesters[index] = gpaData.semesters[newIndex];
+    gpaData.semesters[newIndex] = temp;
+
+    saveData();
+    renderSemesters();
+}
+
+
+// -------------------------------
 // COURSE FUNCTIONS
 // -------------------------------
 function addCourse(semId) {
@@ -460,3 +479,4 @@ function downloadTranscriptPDF() {
     sortSemesters();
     renderSemesters();
 })();
+
