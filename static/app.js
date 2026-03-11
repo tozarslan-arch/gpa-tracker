@@ -184,10 +184,24 @@ function cumulativeGPA() {
 }
 
 // -------------------------------
-// SEMESTER SORTING
+// SEMESTER SORTING (ALPHABETICAL BY NAME)
 // -------------------------------
 function sortSemesters() {
     gpaData.semesters.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// -------------------------------
+// COLOR DOT BY SEASON
+// -------------------------------
+function getSeasonColor(name) {
+    const season = (name.split(/\s+/)[0] || "").toLowerCase();
+
+    if (["winter", "kış", "invierno"].includes(season)) return "#3b82f6";   // blue
+    if (["spring", "ilkbahar", "primavera"].includes(season)) return "#22c55e"; // green
+    if (["summer", "yaz", "verano"].includes(season)) return "#eab308";   // yellow
+    if (["fall", "güz", "otoño"].includes(season)) return "#f97316";      // orange
+
+    return "#6b7280"; // gray default
 }
 
 // -------------------------------
@@ -195,6 +209,62 @@ function sortSemesters() {
 // -------------------------------
 let gpaData = loadData();
 let chart;
+let dragIndex = null;
+
+// -------------------------------
+// DRAG & DROP HELPERS
+// -------------------------------
+function handleDragStart(index, event) {
+    dragIndex = index;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", index.toString());
+
+    // Ghost preview: make the card semi-transparent
+    event.target.classList.add("opacity-50");
+}
+
+function handleDragOver(index, event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    autoScroll(event.clientY);
+}
+
+function handleDrop(index, event) {
+    event.preventDefault();
+    const fromIndex = dragIndex;
+    const toIndex = index;
+
+    if (fromIndex === null || toIndex === null || fromIndex === toIndex) {
+        handleDragEnd(event);
+        return;
+    }
+
+    const moved = gpaData.semesters.splice(fromIndex, 1)[0];
+    gpaData.semesters.splice(toIndex, 0, moved);
+
+    dragIndex = null;
+    saveData();
+    renderSemesters();
+}
+
+function handleDragEnd(event) {
+    dragIndex = null;
+    if (event && event.target) {
+        event.target.classList.remove("opacity-50");
+    }
+}
+
+// Auto-scroll when dragging near top/bottom of viewport
+function autoScroll(y) {
+    const threshold = 80;
+    const speed = 10;
+
+    if (y < threshold) {
+        window.scrollBy(0, -speed);
+    } else if (window.innerHeight - y < threshold) {
+        window.scrollBy(0, speed);
+    }
+}
 
 // -------------------------------
 // RENDER SEMESTERS
@@ -205,22 +275,45 @@ function renderSemesters() {
 
     gpaData.semesters.forEach((sem, index) => {
         const div = document.createElement("div");
-        div.className = "bg-white p-4 rounded shadow";
+        div.className = "bg-white p-4 rounded shadow transition-transform duration-150";
+        div.setAttribute("draggable", "true");
+        div.setAttribute("data-index", index);
+
+        div.ondragstart = (e) => handleDragStart(index, e);
+        div.ondragover = (e) => handleDragOver(index, e);
+        div.ondrop = (e) => handleDrop(index, e);
+        div.ondragend = (e) => handleDragEnd(e);
+
+        const color = getSeasonColor(sem.name);
 
         div.innerHTML = `
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-2">
                 <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded-full" style="background-color: ${color};"></span>
+
                     <span
                         id="sem-name-${sem.id}"
                         class="text-xl font-bold px-1 rounded hover:bg-gray-100 cursor-text"
                         contenteditable="false"
                         onblur="finishEditSemester('${sem.id}')"
                     >${sem.name}</span>
-                    <button onclick="startEditSemester('${sem.id}')" class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">${t("edit")}</button>
-                    <button onclick="deleteSemester('${sem.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">${t("delete")}</button>
+
+                    <button onclick="startEditSemester('${sem.id}')" 
+                            class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
+                        ${t("edit")}
+                    </button>
+
+                    <button onclick="deleteSemester('${sem.id}')" 
+                            class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
+                        ${t("delete")}
+                    </button>
                 </div>
+
                 <div class="flex gap-1">
-                    <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded text-xs md:text-sm">${t("addCourse")}</button>
+                    <button onclick="addCourse('${sem.id}')" 
+                            class="px-2 py-1 bg-blue-500 text-white rounded text-xs md:text-sm">
+                        ${t("addCourse")}
+                    </button>
                 </div>
             </div>
 
@@ -231,8 +324,15 @@ function renderSemesters() {
                             <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
                         </div>
                         <div class="flex gap-1">
-                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">${t("edit")}</button>
-                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">${t("delete")}</button>
+                            <button onclick="editCourse('${sem.id}', '${c.id}')" 
+                                    class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
+                                ${t("edit")}
+                            </button>
+
+                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" 
+                                    class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
+                                ${t("delete")}
+                            </button>
                         </div>
                     </div>
                 `).join("")}
@@ -288,25 +388,6 @@ function deleteSemester(semId) {
     gpaData.semesters = gpaData.semesters.filter(s => s.id !== semId);
     renderSemesters();
 }
-
-// -------------------------------
-// MOVE SEMESTER UP / DOWN
-// -------------------------------
-function moveSemester(index, direction) {
-    const newIndex = index + direction;
-
-    // Prevent moving out of bounds
-    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
-
-    // Swap semesters
-    const temp = gpaData.semesters[index];
-    gpaData.semesters[index] = gpaData.semesters[newIndex];
-    gpaData.semesters[newIndex] = temp;
-
-    saveData();
-    renderSemesters();
-}
-
 
 // -------------------------------
 // COURSE FUNCTIONS
@@ -479,4 +560,3 @@ function downloadTranscriptPDF() {
     sortSemesters();
     renderSemesters();
 })();
-
