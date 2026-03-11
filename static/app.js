@@ -1,5 +1,5 @@
 // -------------------------------
-// SAMPLE DATA (first-time users)
+// SAMPLE DATA
 // -------------------------------
 const sampleData = {
     semesters: [
@@ -15,7 +15,7 @@ const sampleData = {
 };
 
 // -------------------------------
-// LOAD DATA FROM LOCALSTORAGE
+// LOAD / SAVE
 // -------------------------------
 function loadData() {
     let data = localStorage.getItem("gpa_data");
@@ -28,16 +28,8 @@ function loadData() {
 
 function saveData() {
     localStorage.setItem("gpa_data", JSON.stringify(gpaData));
-    alert("Saved!");
 }
 
-function autoSave() {
-    localStorage.setItem("gpa_data", JSON.stringify(gpaData));
-}
-
-// -------------------------------
-// RESET ALL DATA
-// -------------------------------
 function resetAllData() {
     if (confirm("Reset everything?")) {
         localStorage.removeItem("gpa_data");
@@ -45,9 +37,6 @@ function resetAllData() {
     }
 }
 
-// -------------------------------
-// GLOBAL DATA OBJECT
-// -------------------------------
 let gpaData = loadData();
 
 // -------------------------------
@@ -60,34 +49,28 @@ const gradePoints = {
     "D+": 1.3, "D": 1.0, "F": 0.0
 };
 
-function calculateSemesterGPA(semester) {
-    let totalPoints = 0;
-    let totalCredits = 0;
-
-    semester.courses.forEach(c => {
+function semesterGPA(sem) {
+    let pts = 0, cr = 0;
+    sem.courses.forEach(c => {
         if (gradePoints[c.grade]) {
-            totalPoints += gradePoints[c.grade] * c.credits;
-            totalCredits += c.credits;
+            pts += gradePoints[c.grade] * c.credits;
+            cr += c.credits;
         }
     });
-
-    return totalCredits === 0 ? 0 : (totalPoints / totalCredits);
+    return cr === 0 ? 0 : pts / cr;
 }
 
-function calculateCumulativeGPA() {
-    let totalPoints = 0;
-    let totalCredits = 0;
-
+function cumulativeGPA() {
+    let pts = 0, cr = 0;
     gpaData.semesters.forEach(sem => {
         sem.courses.forEach(c => {
             if (gradePoints[c.grade]) {
-                totalPoints += gradePoints[c.grade] * c.credits;
-                totalCredits += c.credits;
+                pts += gradePoints[c.grade] * c.credits;
+                cr += c.credits;
             }
         });
     });
-
-    return totalCredits === 0 ? 0 : (totalPoints / totalCredits);
+    return cr === 0 ? 0 : pts / cr;
 }
 
 // -------------------------------
@@ -98,69 +81,93 @@ function renderSemesters() {
     container.innerHTML = "";
 
     gpaData.semesters.forEach((sem, index) => {
-        const semDiv = document.createElement("div");
-        semDiv.className = "bg-white p-4 rounded shadow mb-4";
+        const div = document.createElement("div");
+        div.className = "bg-white p-4 rounded shadow mb-4";
 
-        semDiv.innerHTML = `
+        div.innerHTML = `
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold">${sem.name}</h2>
                 <div>
                     <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded">↑</button>
                     <button onclick="moveSemester(${index}, 1)" class="px-2 py-1 bg-gray-300 rounded">↓</button>
-                    <button onclick="toggleSemester('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded">Toggle</button>
+                    <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded">Add Course</button>
                 </div>
             </div>
 
-            <div id="sem-${sem.id}" class="mt-3">
+            <div class="mt-3">
                 ${sem.courses.map(c => `
-                    <div class="p-2 border rounded mb-2">
-                        <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
+                    <div class="p-2 border rounded mb-2 flex justify-between">
+                        <div>
+                            <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
+                        </div>
+                        <div>
+                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded">Edit</button>
+                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded">X</button>
+                        </div>
                     </div>
                 `).join("")}
             </div>
         `;
 
-        container.appendChild(semDiv);
+        container.appendChild(div);
     });
 
     updateChart();
-    autoSave();
+    saveData();
 }
 
 // -------------------------------
-// COLLAPSE SEMESTER
+// COURSE FUNCTIONS
 // -------------------------------
-function toggleSemester(id) {
-    const div = document.getElementById(`sem-${id}`);
-    div.style.display = div.style.display === "none" ? "block" : "none";
+function addCourse(semId) {
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    const name = prompt("Course name:");
+    if (!name) return;
+
+    const credits = parseInt(prompt("Credits:"), 10);
+    const grade = prompt("Grade (A, B+, C-, etc):");
+
+    sem.courses.push({
+        id: "c" + Date.now(),
+        name,
+        credits,
+        grade
+    });
+
+    renderSemesters();
+}
+
+function editCourse(semId, courseId) {
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    const course = sem.courses.find(c => c.id === courseId);
+
+    const name = prompt("Course name:", course.name);
+    const credits = parseInt(prompt("Credits:", course.credits), 10);
+    const grade = prompt("Grade:", course.grade);
+
+    course.name = name;
+    course.credits = credits;
+    course.grade = grade;
+
+    renderSemesters();
+}
+
+function deleteCourse(semId, courseId) {
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    sem.courses = sem.courses.filter(c => c.id !== courseId);
+    renderSemesters();
 }
 
 // -------------------------------
-// MOVE SEMESTER UP/DOWN
+// MOVE SEMESTER
 // -------------------------------
-function moveSemester(index, direction) {
-    const newIndex = index + direction;
+function moveSemester(index, dir) {
+    const newIndex = index + dir;
     if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
 
     const temp = gpaData.semesters[index];
     gpaData.semesters[index] = gpaData.semesters[newIndex];
     gpaData.semesters[newIndex] = temp;
-
-    renderSemesters();
-}
-
-// -------------------------------
-// ADD SEMESTER
-// -------------------------------
-function addSemester() {
-    const name = prompt("Semester name:");
-    if (!name) return;
-
-    gpaData.semesters.push({
-        id: "sem" + Date.now(),
-        name,
-        courses: []
-    });
 
     renderSemesters();
 }
@@ -173,33 +180,32 @@ let chart;
 function updateChart() {
     const ctx = document.getElementById("gpaChart").getContext("2d");
 
-    const semesterGPAs = gpaData.semesters.map(s => calculateSemesterGPA(s));
-    const cumulative = calculateCumulativeGPA();
+    const labels = gpaData.semesters.map(s => s.name);
+    const semGPA = gpaData.semesters.map(s => semesterGPA(s));
+    const cumGPA = semGPA.map(() => cumulativeGPA());
 
     if (chart) chart.destroy();
 
     chart = new Chart(ctx, {
         type: "line",
         data: {
-            labels: gpaData.semesters.map(s => s.name),
+            labels,
             datasets: [
                 {
                     label: "Semester GPA",
-                    data: semesterGPAs,
+                    data: semGPA,
                     borderColor: "blue",
                     fill: false
                 },
                 {
                     label: "Cumulative GPA",
-                    data: semesterGPAs.map((_, i) =>
-                        calculateCumulativeGPA()
-                    ),
+                    data: cumGPA,
                     borderColor: "green",
                     fill: false
                 },
                 {
                     label: "Target 3.0",
-                    data: semesterGPAs.map(() => 3.0),
+                    data: semGPA.map(() => 3.0),
                     borderColor: "red",
                     borderDash: [5, 5],
                     fill: false
