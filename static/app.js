@@ -15,7 +15,7 @@ const sampleData = {
 };
 
 // -------------------------------
-// LOAD / SAVE
+// LOAD / SAVE / RESET
 // -------------------------------
 function loadData() {
     let data = localStorage.getItem("gpa_data");
@@ -85,9 +85,24 @@ function renderSemesters() {
         div.className = "bg-white p-4 rounded shadow mb-4";
 
         div.innerHTML = `
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold">${sem.name}</h2>
-                <div>
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center space-x-2">
+                    <span 
+                        id="sem-name-${sem.id}" 
+                        class="text-xl font-bold px-1 rounded hover:bg-gray-100 cursor-text"
+                        contenteditable="false"
+                        onblur="finishEditSemester('${sem.id}')"
+                    >${sem.name}</span>
+                    <button 
+                        onclick="startEditSemester('${sem.id}')" 
+                        class="px-2 py-1 bg-yellow-400 rounded text-sm"
+                    >Edit</button>
+                    <button 
+                        onclick="deleteSemester('${sem.id}')" 
+                        class="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                    >Delete</button>
+                </div>
+                <div class="space-x-1">
                     <button onclick="moveSemester(${index}, -1)" class="px-2 py-1 bg-gray-300 rounded">↑</button>
                     <button onclick="moveSemester(${index}, 1)" class="px-2 py-1 bg-gray-300 rounded">↓</button>
                     <button onclick="addCourse('${sem.id}')" class="px-2 py-1 bg-blue-500 text-white rounded">Add Course</button>
@@ -100,9 +115,9 @@ function renderSemesters() {
                         <div>
                             <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
                         </div>
-                        <div>
-                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded">Edit</button>
-                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded">X</button>
+                        <div class="space-x-1">
+                            <button onclick="editCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-yellow-400 rounded text-sm">Edit</button>
+                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" class="px-2 py-1 bg-red-500 text-white rounded text-sm">X</button>
                         </div>
                     </div>
                 `).join("")}
@@ -117,6 +132,62 @@ function renderSemesters() {
 }
 
 // -------------------------------
+// SEMESTER INLINE EDIT / ADD / DELETE / MOVE
+// -------------------------------
+function addSemester() {
+    const name = prompt("Semester name:");
+    if (!name) return;
+
+    gpaData.semesters.push({
+        id: "sem" + Date.now(),
+        name,
+        courses: []
+    });
+
+    renderSemesters();
+}
+
+function startEditSemester(semId) {
+    const span = document.getElementById(`sem-name-${semId}`);
+    span.contentEditable = "true";
+    span.focus();
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function finishEditSemester(semId) {
+    const span = document.getElementById(`sem-name-${semId}`);
+    span.contentEditable = "false";
+    const newName = span.textContent.trim();
+    if (!newName) return;
+
+    const sem = gpaData.semesters.find(s => s.id === semId);
+    sem.name = newName;
+    saveData();
+    updateChart();
+}
+
+function deleteSemester(semId) {
+    if (!confirm("Delete this semester and all its courses?")) return;
+    gpaData.semesters = gpaData.semesters.filter(s => s.id !== semId);
+    renderSemesters();
+}
+
+function moveSemester(index, dir) {
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
+
+    const temp = gpaData.semesters[index];
+    gpaData.semesters[index] = gpaData.semesters[newIndex];
+    gpaData.semesters[newIndex] = temp;
+
+    renderSemesters();
+}
+
+// -------------------------------
 // COURSE FUNCTIONS
 // -------------------------------
 function addCourse(semId) {
@@ -124,14 +195,18 @@ function addCourse(semId) {
     const name = prompt("Course name:");
     if (!name) return;
 
-    const credits = parseInt(prompt("Credits:"), 10);
+    const creditsRaw = prompt("Credits:");
+    const credits = parseInt(creditsRaw, 10);
+    if (isNaN(credits) || credits <= 0) return;
+
     const grade = prompt("Grade (A, B+, C-, etc):");
+    if (!grade) return;
 
     sem.courses.push({
         id: "c" + Date.now(),
         name,
         credits,
-        grade
+        grade: grade.toUpperCase()
     });
 
     renderSemesters();
@@ -142,12 +217,18 @@ function editCourse(semId, courseId) {
     const course = sem.courses.find(c => c.id === courseId);
 
     const name = prompt("Course name:", course.name);
-    const credits = parseInt(prompt("Credits:", course.credits), 10);
+    if (!name) return;
+
+    const creditsRaw = prompt("Credits:", course.credits);
+    const credits = parseInt(creditsRaw, 10);
+    if (isNaN(credits) || credits <= 0) return;
+
     const grade = prompt("Grade:", course.grade);
+    if (!grade) return;
 
     course.name = name;
     course.credits = credits;
-    course.grade = grade;
+    course.grade = grade.toUpperCase();
 
     renderSemesters();
 }
@@ -155,20 +236,6 @@ function editCourse(semId, courseId) {
 function deleteCourse(semId, courseId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
     sem.courses = sem.courses.filter(c => c.id !== courseId);
-    renderSemesters();
-}
-
-// -------------------------------
-// MOVE SEMESTER
-// -------------------------------
-function moveSemester(index, dir) {
-    const newIndex = index + dir;
-    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
-
-    const temp = gpaData.semesters[index];
-    gpaData.semesters[index] = gpaData.semesters[newIndex];
-    gpaData.semesters[newIndex] = temp;
-
     renderSemesters();
 }
 
@@ -182,7 +249,8 @@ function updateChart() {
 
     const labels = gpaData.semesters.map(s => s.name);
     const semGPA = gpaData.semesters.map(s => semesterGPA(s));
-    const cumGPA = semGPA.map(() => cumulativeGPA());
+    const cum = cumulativeGPA();
+    const cumGPA = semGPA.map(() => cum);
 
     if (chart) chart.destroy();
 
