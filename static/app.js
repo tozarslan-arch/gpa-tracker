@@ -184,24 +184,90 @@ function cumulativeGPA() {
 }
 
 // -------------------------------
-// SEMESTER SORTING (ALPHABETICAL BY NAME)
+// FUZZY SEASON PARSING
 // -------------------------------
-function sortSemesters() {
-    gpaData.semesters.sort((a, b) => a.name.localeCompare(b.name));
+const seasonOrder = {
+    winter: 1,
+    spring: 2,
+    summer: 3,
+    fall: 4
+};
+
+function parseSemesterName(name) {
+    const raw = (name || "").toString().toLowerCase();
+
+    // Year detection (4-digit or 2-digit)
+    let yearMatch = raw.match(/(20\d{2})/);
+    let year = 0;
+    if (yearMatch) {
+        year = parseInt(yearMatch[1], 10);
+    } else {
+        const twoDigit = raw.match(/(?:[^0-9]|^)(\d{2})(?:[^0-9]|$)/);
+        if (twoDigit) {
+            const yy = parseInt(twoDigit[1], 10);
+            year = yy >= 50 ? 1900 + yy : 2000 + yy;
+        }
+    }
+
+    // Season detection (fuzzy, EN/TR/ES)
+    let seasonKey = null;
+
+    const checks = [
+        { key: "winter", patterns: ["winter", "kış", "kis", "invierno", "inv"] },
+        { key: "spring", patterns: ["spring", "ilkbahar", "bahar", "primavera", "prim"] },
+        { key: "summer", patterns: ["summer", "yaz", "verano", "ver"] },
+        { key: "fall",   patterns: ["fall", "autumn", "güz", "guz", "otoño", "otono", "oto"] }
+    ];
+
+    for (const entry of checks) {
+        if (entry.patterns.some(p => raw.includes(p))) {
+            seasonKey = entry.key;
+            break;
+        }
+    }
+
+    const isKnown = !!seasonKey && !!year;
+    return { seasonKey, year, isKnown };
 }
 
 // -------------------------------
 // COLOR DOT BY SEASON
 // -------------------------------
 function getSeasonColor(name) {
-    const season = (name.split(/\s+/)[0] || "").toLowerCase();
+    const { seasonKey } = parseSemesterName(name);
 
-    if (["winter", "kış", "invierno"].includes(season)) return "#3b82f6";   // blue
-    if (["spring", "ilkbahar", "primavera"].includes(season)) return "#22c55e"; // green
-    if (["summer", "yaz", "verano"].includes(season)) return "#eab308";   // yellow
-    if (["fall", "güz", "otoño"].includes(season)) return "#f97316";      // orange
+    if (seasonKey === "winter") return "#3b82f6";   // blue
+    if (seasonKey === "spring") return "#22c55e";   // green
+    if (seasonKey === "summer") return "#eab308";   // yellow
+    if (seasonKey === "fall")   return "#f97316";   // orange
 
     return "#6b7280"; // gray default
+}
+
+// -------------------------------
+// SMART SORTING (YEAR + SEASON, FUZZY)
+// -------------------------------
+function sortSemesters() {
+    gpaData.semesters.sort((a, b) => {
+        const pa = parseSemesterName(a.name);
+        const pb = parseSemesterName(b.name);
+
+        // If both known, sort by year then season
+        if (pa.isKnown && pb.isKnown) {
+            if (pa.year !== pb.year) return pa.year - pb.year;
+
+            const sa = seasonOrder[pa.seasonKey] || 0;
+            const sb = seasonOrder[pb.seasonKey] || 0;
+            return sa - sb;
+        }
+
+        // Known seasons come before unknown
+        if (pa.isKnown && !pb.isKnown) return -1;
+        if (!pa.isKnown && pb.isKnown) return 1;
+
+        // Both unknown: alphabetical
+        return a.name.localeCompare(b.name);
+    });
 }
 
 // -------------------------------
@@ -209,62 +275,6 @@ function getSeasonColor(name) {
 // -------------------------------
 let gpaData = loadData();
 let chart;
-let dragIndex = null;
-
-// -------------------------------
-// DRAG & DROP HELPERS
-// -------------------------------
-function handleDragStart(index, event) {
-    dragIndex = index;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", index.toString());
-
-    // Ghost preview: make the card semi-transparent
-    event.target.classList.add("opacity-50");
-}
-
-function handleDragOver(index, event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    autoScroll(event.clientY);
-}
-
-function handleDrop(index, event) {
-    event.preventDefault();
-    const fromIndex = dragIndex;
-    const toIndex = index;
-
-    if (fromIndex === null || toIndex === null || fromIndex === toIndex) {
-        handleDragEnd(event);
-        return;
-    }
-
-    const moved = gpaData.semesters.splice(fromIndex, 1)[0];
-    gpaData.semesters.splice(toIndex, 0, moved);
-
-    dragIndex = null;
-    saveData();
-    renderSemesters();
-}
-
-function handleDragEnd(event) {
-    dragIndex = null;
-    if (event && event.target) {
-        event.target.classList.remove("opacity-50");
-    }
-}
-
-// Auto-scroll when dragging near top/bottom of viewport
-function autoScroll(y) {
-    const threshold = 80;
-    const speed = 10;
-
-    if (y < threshold) {
-        window.scrollBy(0, -speed);
-    } else if (window.innerHeight - y < threshold) {
-        window.scrollBy(0, speed);
-    }
-}
 
 // -------------------------------
 // RENDER SEMESTERS
@@ -276,13 +286,6 @@ function renderSemesters() {
     gpaData.semesters.forEach((sem, index) => {
         const div = document.createElement("div");
         div.className = "bg-white p-4 rounded shadow transition-transform duration-150";
-        div.setAttribute("draggable", "true");
-        div.setAttribute("data-index", index);
-
-        div.ondragstart = (e) => handleDragStart(index, e);
-        div.ondragover = (e) => handleDragOver(index, e);
-        div.ondrop = (e) => handleDrop(index, e);
-        div.ondragend = (e) => handleDragEnd(e);
 
         const color = getSeasonColor(sem.name);
 
@@ -310,6 +313,16 @@ function renderSemesters() {
                 </div>
 
                 <div class="flex gap-1">
+                    <button onclick="moveSemester(${index}, -1)" 
+                            class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">
+                        ↑
+                    </button>
+
+                    <button onclick="moveSemester(${index}, 1)" 
+                            class="px-2 py-1 bg-gray-300 rounded text-xs md:text-sm">
+                        ↓
+                    </button>
+
                     <button onclick="addCourse('${sem.id}')" 
                             class="px-2 py-1 bg-blue-500 text-white rounded text-xs md:text-sm">
                         ${t("addCourse")}
@@ -359,6 +372,7 @@ function addSemester() {
         courses: []
     });
 
+    // New semester: apply smart sort
     sortSemesters();
     renderSemesters();
 }
@@ -367,18 +381,26 @@ function startEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
     span.contentEditable = "true";
     span.focus();
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
 }
 
 function finishEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
-    span.contentEditable = "false";
+    if (!span || span.contentEditable !== "true") return;
 
+    span.contentEditable = "false";
     const newName = span.textContent.trim();
     if (!newName) return;
 
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     sem.name = newName;
 
+    // Rename: apply smart sort
     sortSemesters();
     renderSemesters();
 }
@@ -390,10 +412,27 @@ function deleteSemester(semId) {
 }
 
 // -------------------------------
+// MOVE SEMESTER UP / DOWN (MANUAL OVERRIDE)
+// -------------------------------
+function moveSemester(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= gpaData.semesters.length) return;
+
+    const temp = gpaData.semesters[index];
+    gpaData.semesters[index] = gpaData.semesters[newIndex];
+    gpaData.semesters[newIndex] = temp;
+
+    // Manual move: do NOT re-sort, just re-render + update chart
+    saveData();
+    renderSemesters();
+}
+
+// -------------------------------
 // COURSE FUNCTIONS
 // -------------------------------
 function addCourse(semId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
 
     const name = prompt(t("promptCourseName"));
     if (!name) return;
@@ -416,7 +455,9 @@ function addCourse(semId) {
 
 function editCourse(semId, courseId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     const course = sem.courses.find(c => c.id === courseId);
+    if (!course) return;
 
     const name = prompt(t("promptCourseName"), course.name);
     if (!name) return;
@@ -436,6 +477,7 @@ function editCourse(semId, courseId) {
 
 function deleteCourse(semId, courseId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     sem.courses = sem.courses.filter(c => c.id !== courseId);
     renderSemesters();
 }
@@ -445,6 +487,7 @@ function deleteCourse(semId, courseId) {
 // -------------------------------
 function updateChart() {
     const canvas = document.getElementById("gpaChart");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
     const labels = gpaData.semesters.map(s => s.name);
