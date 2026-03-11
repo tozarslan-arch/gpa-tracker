@@ -14,48 +14,47 @@
 
         <!-- Desktop sidebar -->
         <aside class="hidden md:block w-64 bg-white shadow p-4">
-            <h2 class="text-xl font-bold mb-4">GPA Tracker</h2>
+            <h2 id="titleText" class="text-xl font-bold mb-4">GPA Tracker</h2>
 
-            <button onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded mb-2">
-                Add Semester
-            </button>
-            <button onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded mb-2">
-                Reset All Data
-            </button>
+            <button id="btnAddSemester" onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded mb-2"></button>
+            <button id="btnReset" onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded mb-2"></button>
 
-            <p class="text-sm text-gray-500 mt-4">
-                Your data is stored locally in your browser.
-            </p>
+            <div class="flex space-x-3 text-2xl mt-4">
+                <span class="cursor-pointer" onclick="setLanguage('en')">🇺🇸</span>
+                <span class="cursor-pointer" onclick="setLanguage('tr')">🇹🇷</span>
+                <span class="cursor-pointer" onclick="setLanguage('es')">🇪🇸</span>
+            </div>
+
+            <p id="localNote" class="text-sm text-gray-500 mt-4"></p>
         </aside>
 
         <!-- Mobile top bar -->
         <header class="md:hidden bg-white shadow px-4 py-3 flex items-center justify-between">
-            <span class="font-bold text-lg">GPA Tracker</span>
-            <button onclick="toggleMobileMenu()" class="px-3 py-1 border rounded">
-                ☰
-            </button>
+            <span id="mobileTitle" class="font-bold text-lg">GPA Tracker</span>
+            <button onclick="toggleMobileMenu()" class="px-3 py-1 border rounded">☰</button>
         </header>
 
         <!-- Mobile menu -->
         <div id="mobileMenu" class="md:hidden bg-white shadow px-4 py-3 space-y-2 hidden">
-            <button onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded">
-                Add Semester
-            </button>
-            <button onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded">
-                Reset All Data
-            </button>
-            <p class="text-sm text-gray-500">
-                Your data is stored locally in your browser.
-            </p>
+            <button id="mBtnAddSemester" onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded"></button>
+            <button id="mBtnReset" onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded"></button>
+
+            <div class="flex space-x-3 text-2xl">
+                <span class="cursor-pointer" onclick="setLanguage('en')">🇺🇸</span>
+                <span class="cursor-pointer" onclick="setLanguage('tr')">🇹🇷</span>
+                <span class="cursor-pointer" onclick="setLanguage('es')">🇪🇸</span>
+            </div>
+
+            <p id="mLocalNote" class="text-sm text-gray-500"></p>
         </div>
 
         <!-- Main content -->
         <main class="flex-1 p-4 md:p-6">
-            <h1 class="text-3xl font-bold mb-4">Your Semesters</h1>
+            <h1 id="semestersHeader" class="text-3xl font-bold mb-4"></h1>
 
             <div id="semesterList" class="space-y-4"></div>
 
-            <h2 class="text-2xl font-bold mt-8 mb-2">GPA Chart</h2>
+            <h2 id="chartHeader" class="text-2xl font-bold mt-8 mb-2"></h2>
             <div class="bg-white rounded shadow p-4 max-w-3xl">
                 <div class="relative" style="height: 220px;">
                     <canvas id="gpaChart"></canvas>
