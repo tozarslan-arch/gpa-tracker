@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+gpa_data.json
+gpa_order.json
+.env
