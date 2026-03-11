@@ -8,49 +8,90 @@
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="TYX8VaitW0Xel1eW9ulAARa3s1yswBQKnBPtMulLc2Q" />
 
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <link rel="stylesheet" href="/static/styles.css" />
 </head>
 
-<body>
-    <header>
-        <h1 id="title">GPA Tracker</h1>
+<body class="bg-gray-100 text-gray-900">
 
-        <div class="language-selector">
-            <label for="languageSelect" id="languageLabel">Language:</label>
-            <select id="languageSelect">
-                <option value="en">English</option>
-                <option value="tr">Türkçe</option>
-                <option value="es">Español</option>
+    <!-- Desktop Header -->
+    <header class="hidden md:flex justify-between items-center p-4 bg-white shadow">
+        <h1 id="titleText" class="text-2xl font-bold">GPA Tracker</h1>
+
+        <div class="flex items-center gap-3">
+            <select id="languageSelect" onchange="setLanguage(this.value)" class="border rounded px-2 py-1">
+                <option value="en">🇺🇸 English</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="es">🇪🇸 Español</option>
             </select>
+
+            <button id="btnAddSemester" onclick="addSemester()" class="px-3 py-2 bg-blue-500 text-white rounded">
+                Add Semester
+            </button>
+
+            <button id="btnReset" onclick="resetAllData()" class="px-3 py-2 bg-red-500 text-white rounded">
+                Reset All Data
+            </button>
         </div>
     </header>
 
-    <main>
-        <section id="gpaSummary">
-            <h2 id="currentGpaLabel">Current GPA:</h2>
-            <div id="currentGpaValue">0.00</div>
-        </section>
+    <!-- Mobile Header -->
+    <header class="md:hidden p-4 bg-white shadow flex justify-between items-center">
+        <h1 id="mobileTitle" class="text-xl font-bold">GPA Tracker</h1>
+        <button onclick="toggleMobileMenu()" class="text-2xl">
+            <i class="fa fa-bars"></i>
+        </button>
+    </header>
 
-        <section id="chartSection">
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="md:hidden hidden bg-white shadow p-4 space-y-3">
+        <select id="mLanguageSelect" onchange="setLanguage(this.value)" class="border rounded px-2 py-1 w-full">
+            <option value="en">🇺🇸 English</option>
+            <option value="tr">🇹🇷 Türkçe</option>
+            <option value="es">🇪🇸 Español</option>
+        </select>
+
+        <button id="mBtnAddSemester" onclick="addSemester()" class="w-full px-3 py-2 bg-blue-500 text-white rounded">
+            Add Semester
+        </button>
+
+        <button id="mBtnReset" onclick="resetAllData()" class="w-full px-3 py-2 bg-red-500 text-white rounded">
+            Reset All Data
+        </button>
+
+        <p id="mLocalNote" class="text-sm text-gray-600"></p>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- Local Note -->
+        <p id="localNote" class="text-sm text-gray-600">
+            Your data is stored locally in your browser.
+        </p>
+
+        <!-- Semesters Header -->
+        <h2 id="semestersHeader" class="text-xl font-bold">Your Semesters</h2>
+
+        <!-- Semester List -->
+        <div id="semesterList" class="space-y-4"></div>
+
+        <!-- Chart Header -->
+        <h2 id="chartHeader" class="text-xl font-bold mt-6">GPA Chart</h2>
+
+        <!-- Chart Container -->
+        <div class="bg-white p-4 rounded shadow h-64">
             <canvas id="gpaChart"></canvas>
-        </section>
+        </div>
 
-        <section id="semestersSection">
-            <h2 id="semestersLabel">Semesters</h2>
-            <button id="addSemesterBtn" class="primary-btn">
-                <i class="fa fa-plus"></i> <span id="addSemesterText">Add Semester</span>
-            </button>
-
-            <div id="semestersContainer"></div>
-        </section>
     </main>
 
-    <footer>
-        <p>GPA Tracker © 2026</p>
-    </footer>
-
+    <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/app.js"></script>
+
 </body>
 </html>
