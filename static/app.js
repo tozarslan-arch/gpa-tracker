@@ -15,124 +15,6 @@ const translations = {
         promptSemester: "Semester name (e.g., 'Fall 2024'):",
         promptCourseName: "Course name:",
         promptCredits: "Credits:",
-        promptGrade: "Grade (A, B+, C-, etc):"
-    },
-    tr: {
-        title: "GPA Takipçisi",
-        addSemester: "Dönem Ekle",
-        resetAll: "Tüm Verileri Sıfırla",
-        localNote: "Verileriniz tarayıcınızda yerel olarak saklanır.",
-        semestersHeader: "Dönemleriniz",
-        chartHeader: "GPA Grafiği",
-        addCourse: "Ders Ekle",
-        edit: "Düzenle",
-        delete: "Sil",
-        promptSemester: "Dönem adı (örn: 'Güz 2024'):",
-        promptCourseName: "Ders adı:",
-        promptCredits: "Kredi:",
-        promptGrade: "Not (A, B+, C-, vb):"
-    },
-    es: {
-        title: "Rastreador de GPA",
-        addSemester: "Agregar Semestre",
-        resetAll: "Restablecer Datos",
-        localNote: "Sus datos se almacenan localmente en su navegador.",
-        semestersHeader: "Sus Semestres",
-        chartHeader: "Gráfico de GPA",
-        addCourse: "Agregar Curso",
-        edit: "Editar",
-        delete: "Eliminar",
-        promptSemester: "Nombre del semestre (ej: 'Otoño 2024'):",
-        promptCourseName: "Nombre del curso:",
-        promptCredits: "Créditos:",
-        promptGrade: "Calificación (A, B+, C-, etc):"
-    }
-};
-
-let currentLanguage = "en";
-
-// -------------------------------
-// LANGUAGE HELPERS
-// -------------------------------
-function t(key) {
-    return translations[currentLanguage][key];
-}
-
-function applyTranslations() {
-    document.getElementById("titleText").textContent = t("title");
-    document.getElementById("mobileTitle").textContent = t("title");
-
-    document.getElementById("btnAddSemester").textContent = t("addSemester");
-    document.getElementById("btnReset").textContent = t("resetAll");
-    document.getElementById("localNote").textContent = t("localNote");
-
-    document.getElementById("mBtnAddSemester").textContent = t("addSemester");
-    document.getElementById("mBtnReset").textContent = t("resetAll");
-    document.getElementById("mLocalNote").textContent = t("localNote");
-
-    document.getElementById("semestersHeader").textContent = t("semestersHeader");
-    document.getElementById("chartHeader").textContent = t("chartHeader");
-
-    renderSemesters();
-}
-
-function setLanguage(lang) {
-    currentLanguage = lang;
-    localStorage.setItem("language", lang);
-    applyTranslations();
-}
-
-// -------------------------------
-// AUTO-DETECT LANGUAGE
-// -------------------------------
-async function detectLanguage() {
-    // 1. LocalStorage
-    const saved = localStorage.getItem("language");
-    if (saved) return saved;
-
-    // 2. Browser language
-    const browserLang = navigator.language.toLowerCase();
-    if (browserLang.startsWith("tr")) return "tr";
-    if (browserLang.startsWith("es")) return "es";
-
-    // 3. Country detection
-    try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        const country = data.country;
-
-        const spanishCountries = ["ES","MX","AR","CO","CL","PE","VE","UY","PY","BO","DO","CR","PA","GT","SV","HN","NI"];
-        if (country === "TR") return "tr";
-        if (spanishCountries.includes(country)) return "es";
-    } catch {}
-
-    // 4. Default to English
-    return "en";
-}
-
-// -------------------------------
-// GPA LOGIC + RENDERING
-// -------------------------------
-// (This section is identical to your working version — omitted here for brevity)
-// I will include the full logic in your actual file.
-
-// -------------------------------
-// TRANSLATIONS
-// -------------------------------
-const translations = {
-    en: {
-        title: "GPA Tracker",
-        addSemester: "Add Semester",
-        resetAll: "Reset All Data",
-        localNote: "Your data is stored locally in your browser.",
-        semestersHeader: "Your Semesters",
-        chartHeader: "GPA Chart",
-        addCourse: "Add Course",
-        edit: "Edit",
-        delete: "Delete",
-        promptSemester: "Semester name (e.g., 'Fall 2024'):",
-        promptCourseName: "Course name:",
-        promptCredits: "Credits:",
         promptGrade: "Grade (A, B+, C-, etc):",
         confirmDeleteSemester: "Delete this semester and all its courses?",
         confirmReset: "Reset everything?",
@@ -238,7 +120,7 @@ async function detectLanguage() {
         if (country === "TR") return "tr";
         if (spanishCountries.includes(country)) return "es";
     } catch (e) {
-        // ignore errors, fall through to default
+        // ignore errors
     }
 
     return "en";
