@@ -12,62 +12,45 @@
     <link rel="stylesheet" href="/static/styles.css" />
 </head>
 
-<body class="bg-gray-100">
+<body>
+    <header>
+        <h1 id="title">GPA Tracker</h1>
 
-    <div class="min-h-screen flex flex-col md:flex-row">
-
-        <!-- Desktop sidebar -->
-        <aside class="hidden md:block w-64 bg-white shadow p-4">
-            <h2 id="titleText" class="text-xl font-bold mb-4">GPA Tracker</h2>
-
-            <button id="btnAddSemester" onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded mb-2"></button>
-            <button id="btnReset" onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded mb-2"></button>
-
-            <div class="flex space-x-3 text-2xl mt-4">
-                <span class="cursor-pointer" onclick="setLanguage('en')">🇺🇸</span>
-                <span class="cursor-pointer" onclick="setLanguage('tr')">🇹🇷</span>
-                <span class="cursor-pointer" onclick="setLanguage('es')">🇪🇸</span>
-            </div>
-
-            <p id="localNote" class="text-sm text-gray-500 mt-4"></p>
-        </aside>
-
-        <!-- Mobile top bar -->
-        <header class="md:hidden bg-white shadow px-4 py-3 flex items-center justify-between">
-            <span id="mobileTitle" class="font-bold text-lg">GPA Tracker</span>
-            <button onclick="toggleMobileMenu()" class="px-3 py-1 border rounded">☰</button>
-        </header>
-
-        <!-- Mobile menu -->
-        <div id="mobileMenu" class="md:hidden bg-white shadow px-4 py-3 space-y-2 hidden">
-            <button id="mBtnAddSemester" onclick="addSemester()" class="w-full bg-blue-500 text-white py-2 rounded"></button>
-            <button id="mBtnReset" onclick="resetAllData()" class="w-full bg-red-500 text-white py-2 rounded"></button>
-
-            <div class="flex space-x-3 text-2xl">
-                <span class="cursor-pointer" onclick="setLanguage('en')">🇺🇸</span>
-                <span class="cursor-pointer" onclick="setLanguage('tr')">🇹🇷</span>
-                <span class="cursor-pointer" onclick="setLanguage('es')">🇪🇸</span>
-            </div>
-
-            <p id="mLocalNote" class="text-sm text-gray-500"></p>
+        <div class="language-selector">
+            <label for="languageSelect" id="languageLabel">Language:</label>
+            <select id="languageSelect">
+                <option value="en">English</option>
+                <option value="tr">Türkçe</option>
+                <option value="es">Español</option>
+            </select>
         </div>
+    </header>
 
-        <!-- Main content -->
-        <main class="flex-1 p-4 md:p-6">
-            <h1 id="semestersHeader" class="text-3xl font-bold mb-4"></h1>
+    <main>
+        <section id="gpaSummary">
+            <h2 id="currentGpaLabel">Current GPA:</h2>
+            <div id="currentGpaValue">0.00</div>
+        </section>
 
-            <div id="semesterList" class="space-y-4"></div>
+        <section id="chartSection">
+            <canvas id="gpaChart"></canvas>
+        </section>
 
-            <h2 id="chartHeader" class="text-2xl font-bold mt-8 mb-2"></h2>
-            <div class="bg-white rounded shadow p-4 max-w-3xl">
-                <div class="relative" style="height: 220px;">
-                    <canvas id="gpaChart"></canvas>
-                </div>
-            </div>
-        </main>
-    </div>
+        <section id="semestersSection">
+            <h2 id="semestersLabel">Semesters</h2>
+            <button id="addSemesterBtn" class="primary-btn">
+                <i class="fa fa-plus"></i> <span id="addSemesterText">Add Semester</span>
+            </button>
 
+            <div id="semestersContainer"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>GPA Tracker © 2026</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>
-
