@@ -73,10 +73,18 @@
             <canvas id="gpaChart"></canvas>
         </div>
 
-        <button onclick="downloadTranscriptPDF()" 
-                class="px-4 py-2 bg-purple-600 text-white rounded shadow">
-            Download Transcript (PDF)
-        </button>
+ <div class="flex gap-2 mt-4">
+    <button onclick="downloadTranscriptTXT()" 
+            class="px-3 py-2 bg-gray-700 text-white rounded">
+        Download TXT
+    </button>
+
+    <button onclick="downloadTranscriptPDF()" 
+            class="px-3 py-2 bg-blue-600 text-white rounded">
+        Download PDF
+    </button>
+</div>
+
 
     </main>
 
