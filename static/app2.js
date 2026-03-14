@@ -194,22 +194,21 @@ const seasonOrder = {
 };
 
 function parseSemesterName(name) {
-    const raw = (name || "").toString().toLowerCase();
+    const raw = (name || "").toLowerCase();
 
-    // Year detection (4-digit or 2-digit)
     let yearMatch = raw.match(/(20\d{2})/);
     let year = 0;
+
     if (yearMatch) {
         year = parseInt(yearMatch[1], 10);
     } else {
-        const twoDigit = raw.match(/(?:[^0-9]|^)(\d{2})(?:[^0-9]|$)/);
+        const twoDigit = raw.match(/(?:^|[^0-9])(\d{2})(?:$|[^0-9])/);
         if (twoDigit) {
             const yy = parseInt(twoDigit[1], 10);
             year = yy >= 50 ? 1900 + yy : 2000 + yy;
         }
     }
 
-    // Season detection (fuzzy, EN/TR/ES)
     let seasonKey = null;
 
     const checks = [
@@ -236,23 +235,22 @@ function parseSemesterName(name) {
 function getSeasonColor(name) {
     const { seasonKey } = parseSemesterName(name);
 
-    if (seasonKey === "winter") return "#3b82f6";   // blue
-    if (seasonKey === "spring") return "#22c55e";   // green
-    if (seasonKey === "summer") return "#eab308";   // yellow
-    if (seasonKey === "fall")   return "#f97316";   // orange
+    if (seasonKey === "winter") return "#3b82f6";
+    if (seasonKey === "spring") return "#22c55e";
+    if (seasonKey === "summer") return "#eab308";
+    if (seasonKey === "fall")   return "#f97316";
 
-    return "#6b7280"; // gray default
+    return "#6b7280";
 }
 
 // -------------------------------
-// SMART SORTING (YEAR + SEASON, FUZZY)
+// SMART SORTING
 // -------------------------------
 function sortSemesters() {
     gpaData.semesters.sort((a, b) => {
         const pa = parseSemesterName(a.name);
         const pb = parseSemesterName(b.name);
 
-        // If both known, sort by year then season
         if (pa.isKnown && pb.isKnown) {
             if (pa.year !== pb.year) return pa.year - pb.year;
 
@@ -261,11 +259,9 @@ function sortSemesters() {
             return sa - sb;
         }
 
-        // Known seasons come before unknown
         if (pa.isKnown && !pb.isKnown) return -1;
         if (!pa.isKnown && pb.isKnown) return 1;
 
-        // Both unknown: alphabetical
         return a.name.localeCompare(b.name);
     });
 }
@@ -330,39 +326,38 @@ function renderSemesters() {
                 </div>
             </div>
 
-          <!-- COMPACT TABLE (NO BORDERS, SCROLLABLE ON MOBILE) -->
-<div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-        <thead class="text-gray-600 font-semibold">
-            <tr>
-                <th class="text-left pr-4 pb-1">Course</th>
-                <th class="text-left pr-4 pb-1">Cr</th>
-                <th class="text-left pb-1">Grade</th>
-                <th class="text-left pb-1"></th>
-            </tr>
-        </thead>
-        <tbody>
-            ${sem.courses.map(c => `
-                <tr class="align-top">
-                    <td class="pr-4 py-1">${c.name}</td>
-                    <td class="pr-4 py-1">${c.credits}</td>
-                    <td class="py-1">${c.grade}</td>
-                    <td class="pl-4 py-1">
-                        <button onclick="editCourse('${sem.id}', '${c.id}')" 
-                                class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
-                            ${t("edit")}
-                        </button>
-                        <button onclick="deleteCourse('${sem.id}', '${c.id}')" 
-                                class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
-                            ${t("delete")}
-                        </button>
-                    </td>
-                </tr>
-            `).join("")}
-        </tbody>
-    </table>
-</div>
-
+            <!-- COMPACT TABLE (NO BORDERS, SCROLLABLE ON MOBILE) -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-gray-600 font-semibold">
+                        <tr>
+                            <th class="text-left pr-4 pb-1">Course</th>
+                            <th class="text-left pr-4 pb-1">Cr</th>
+                            <th class="text-left pb-1">Grade</th>
+                            <th class="text-left pb-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sem.courses.map(c => `
+                            <tr class="align-top">
+                                <td class="pr-4 py-1">${c.name}</td>
+                                <td class="pr-4 py-1">${c.credits}</td>
+                                <td class="py-1">${c.grade}</td>
+                                <td class="pl-4 py-1">
+                                    <button onclick="editCourse('${sem.id}', '${c.id}')" 
+                                            class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
+                                        ${t("edit")}
+                                    </button>
+                                    <button onclick="deleteCourse('${sem.id}', '${c.id}')" 
+                                            class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
+                                        ${t("delete")}
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
         `;
 
         container.appendChild(div);
@@ -490,4 +485,37 @@ function updateChart() {
 
     const labels = gpaData.semesters.map(s => s.name);
     const semGPA = gpaData.semesters.map(s => semesterGPA(s));
-    const cum = cumulativeG
+    const cum = cumulativeGPA();
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: t("semesterGPA"),
+                    data: semGPA,
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59,130,246,0.2)",
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, max: 4.3 }
+            }
+        }
+    });
+}
+
+// -------------------------------
+// INIT
+// -------------------------------
+(async function init() {
+    currentLanguage = await detectLanguage();
+    applyTranslations();
+})();
