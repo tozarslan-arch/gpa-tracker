@@ -285,7 +285,7 @@ function renderSemesters() {
 
     gpaData.semesters.forEach((sem, index) => {
         const div = document.createElement("div");
-        div.className = "bg-white p-4 rounded shadow";
+        div.className = "bg-white p-4 rounded shadow transition-transform duration-150";
 
         const color = getSeasonColor(sem.name);
 
@@ -330,36 +330,25 @@ function renderSemesters() {
                 </div>
             </div>
 
-            <!-- COMPACT TABLE (NO BORDERS, SCROLLABLE ON MOBILE) -->
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="text-gray-600 font-semibold">
-                        <tr>
-                            <th class="text-left pr-4 pb-1">Course</th>
-                            <th class="text-left pr-4 pb-1">Cr</th>
-                            <th class="text-left pb-1">Grade</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sem.courses.map(c => `
-                            <tr class="align-top">
-                                <td class="pr-4 py-1">${c.name}</td>
-                                <td class="pr-4 py-1">${c.credits}</td>
-                                <td class="py-1">${c.grade}</td>
-                                <td class="pl-4 py-1">
-                                    <button onclick="editCourse('${sem.id}', '${c.id}')" 
-                                            class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
-                                        ${t("edit")}
-                                    </button>
-                                    <button onclick="deleteCourse('${sem.id}', '${c.id}')" 
-                                            class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
-                                        ${t("delete")}
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join("")}
-                    </tbody>
-                </table>
+            <div class="mt-2 space-y-2">
+                ${sem.courses.map(c => `
+                    <div class="p-2 border rounded flex justify-between items-center">
+                        <div class="text-sm md:text-base">
+                            <strong>${c.name}</strong> — ${c.credits} credits — ${c.grade}
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editCourse('${sem.id}', '${c.id}')" 
+                                    class="px-2 py-1 bg-yellow-400 rounded text-xs md:text-sm">
+                                ${t("edit")}
+                            </button>
+
+                            <button onclick="deleteCourse('${sem.id}', '${c.id}')" 
+                                    class="px-2 py-1 bg-red-500 text-white rounded text-xs md:text-sm">
+                                ${t("delete")}
+                            </button>
+                        </div>
+                    </div>
+                `).join("")}
             </div>
         `;
 
@@ -383,6 +372,7 @@ function addSemester() {
         courses: []
     });
 
+    // New semester: apply smart sort
     sortSemesters();
     renderSemesters();
 }
@@ -391,18 +381,26 @@ function startEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
     span.contentEditable = "true";
     span.focus();
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
 }
 
 function finishEditSemester(semId) {
     const span = document.getElementById(`sem-name-${semId}`);
-    span.contentEditable = "false";
+    if (!span || span.contentEditable !== "true") return;
 
+    span.contentEditable = "false";
     const newName = span.textContent.trim();
     if (!newName) return;
 
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     sem.name = newName;
 
+    // Rename: apply smart sort
     sortSemesters();
     renderSemesters();
 }
@@ -414,7 +412,7 @@ function deleteSemester(semId) {
 }
 
 // -------------------------------
-// MOVE SEMESTER UP / DOWN
+// MOVE SEMESTER UP / DOWN (MANUAL OVERRIDE)
 // -------------------------------
 function moveSemester(index, direction) {
     const newIndex = index + direction;
@@ -424,6 +422,7 @@ function moveSemester(index, direction) {
     gpaData.semesters[index] = gpaData.semesters[newIndex];
     gpaData.semesters[newIndex] = temp;
 
+    // Manual move: do NOT re-sort, just re-render + update chart
     saveData();
     renderSemesters();
 }
@@ -433,6 +432,7 @@ function moveSemester(index, direction) {
 // -------------------------------
 function addCourse(semId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
 
     const name = prompt(t("promptCourseName"));
     if (!name) return;
@@ -455,7 +455,9 @@ function addCourse(semId) {
 
 function editCourse(semId, courseId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     const course = sem.courses.find(c => c.id === courseId);
+    if (!course) return;
 
     const name = prompt(t("promptCourseName"), course.name);
     if (!name) return;
@@ -475,6 +477,7 @@ function editCourse(semId, courseId) {
 
 function deleteCourse(semId, courseId) {
     const sem = gpaData.semesters.find(s => s.id === semId);
+    if (!sem) return;
     sem.courses = sem.courses.filter(c => c.id !== courseId);
     renderSemesters();
 }
@@ -484,8 +487,119 @@ function deleteCourse(semId, courseId) {
 // -------------------------------
 function updateChart() {
     const canvas = document.getElementById("gpaChart");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
     const labels = gpaData.semesters.map(s => s.name);
     const semGPA = gpaData.semesters.map(s => semesterGPA(s));
-    const cum = cumulativeG
+    const cum = cumulativeGPA();
+    const cumGPA = semGPA.map(() => cum);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: t("semesterGPA"),
+                    data: semGPA,
+                    borderColor: "blue",
+                    fill: false,
+                    tension: 0.2
+                },
+                {
+                    label: t("cumulativeGPA"),
+                    data: cumGPA,
+                    borderColor: "green",
+                    fill: false,
+                    tension: 0.2
+                },
+                {
+                    label: t("targetGPA"),
+                    data: semGPA.map(() => 3.0),
+                    borderColor: "red",
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 4.3
+                }
+            }
+        }
+    });
+}
+
+// -------------------------------
+// TRANSCRIPT PDF
+// -------------------------------
+function downloadTranscriptPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y = 15;
+
+    doc.setFontSize(18);
+    doc.text("Academic Transcript", 14, y);
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, y);
+    y += 10;
+
+    gpaData.semesters.forEach((sem) => {
+        doc.setFontSize(14);
+        doc.text(sem.name, 14, y);
+        y += 8;
+
+        doc.setFontSize(11);
+
+        sem.courses.forEach((c) => {
+            doc.text(
+                `${c.name} — ${c.credits} credits — Grade: ${c.grade}`,
+                20,
+                y
+            );
+            y += 6;
+
+            if (y > 270) {
+                doc.addPage();
+                y = 15;
+            }
+        });
+
+        const sgpa = semesterGPA(sem).toFixed(2);
+        doc.text(`Semester GPA: ${sgpa}`, 20, y);
+        y += 10;
+
+        if (y > 270) {
+            doc.addPage();
+            y = 15;
+        }
+    });
+
+    const cgpa = cumulativeGPA().toFixed(2);
+    doc.setFontSize(14);
+    doc.text(`Cumulative GPA: ${cgpa}`, 14, y);
+
+    doc.save("transcript.pdf");
+}
+
+// -------------------------------
+// INIT
+// -------------------------------
+(async function init() {
+    currentLanguage = await detectLanguage();
+    applyTranslations();
+    sortSemesters();
+    renderSemesters();
+})();
