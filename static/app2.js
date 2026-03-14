@@ -512,6 +512,71 @@ function updateChart() {
     });
 }
 
+function downloadTranscriptTXT() {
+    let lines = [];
+
+    lines.push("=== GPA TRANSCRIPT ===");
+    lines.push("");
+
+    gpaData.semesters.forEach(sem => {
+        lines.push(`Semester: ${sem.name}`);
+        lines.push("-------------------------");
+
+        sem.courses.forEach(c => {
+            lines.push(`${c.name} | ${c.credits} credits | Grade: ${c.grade}`);
+        });
+
+        lines.push(`Semester GPA: ${semesterGPA(sem).toFixed(2)}`);
+        lines.push("");
+    });
+
+    lines.push(`Cumulative GPA: ${cumulativeGPA().toFixed(2)}`);
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transcript.txt";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+function downloadTranscriptPDF() {
+    const doc = new jspdf.jsPDF();
+
+    let y = 10;
+    doc.setFontSize(16);
+    doc.text("GPA Transcript", 10, y);
+    y += 10;
+
+    doc.setFontSize(12);
+
+    gpaData.semesters.forEach(sem => {
+        doc.text(`Semester: ${sem.name}`, 10, y);
+        y += 6;
+
+        sem.courses.forEach(c => {
+            doc.text(`${c.name} | ${c.credits} credits | Grade: ${c.grade}`, 12, y);
+            y += 6;
+        });
+
+        doc.text(`Semester GPA: ${semesterGPA(sem).toFixed(2)}`, 10, y);
+        y += 10;
+
+        if (y > 270) {
+            doc.addPage();
+            y = 10;
+        }
+    });
+
+    doc.text(`Cumulative GPA: ${cumulativeGPA().toFixed(2)}`, 10, y);
+
+    doc.save("transcript.pdf");
+}
+
+
 // -------------------------------
 // INIT
 // -------------------------------
